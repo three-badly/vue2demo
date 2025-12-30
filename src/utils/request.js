@@ -1,15 +1,36 @@
 import axios from 'axios';
 
-// 创建 axios 实例
+// 1. 创建实例 - 使用代理路径
 const service = axios.create({
-    baseURL: 'http://172.16.0.139:38104', // 后端地址
-    timeout: 10000 // 请求超时时间
+    baseURL: '/api', // 使用代理路径
+    timeout: 10000
 });
 
-// 请求拦截器
+// 2. 不需要携带 token 的接口列表
+const WHITE_LIST = ['/login', '/register', '/captcha']; // 根据实际接口调整
+
+// 3. 请求拦截器：统一加 token
 service.interceptors.request.use(
     config => {
-        // 可以在这里添加 Token 等 Header
+        // 白名单直接放行 - 需要调整路径匹配逻辑
+        const originalUrl = config.url;
+        // 从URL中提取路径部分，去掉代理前缀
+        let urlWithoutPrefix = originalUrl;
+        if (originalUrl.startsWith('/api')) {
+            urlWithoutPrefix = originalUrl.replace('/api', '');
+        }
+        const isWhite = WHITE_LIST.some(path => urlWithoutPrefix.startsWith(path));
+        console.log("拦截1");
+
+        if (isWhite) return config;
+        console.log("拦截2");
+        // 非白名单就塞 token
+        const token = localStorage.getItem('access_token'); // 也可以换成 cookie
+        if (token) {
+            // 后端要求的 header 名，常见两种写法：
+            config.headers['Authorization'] = `Bearer ${token}`; // 写法 1
+            // config.headers['X-Token'] = token;                  // 写法 2
+        }
         return config;
     },
     error => {
@@ -18,21 +39,27 @@ service.interceptors.request.use(
     }
 );
 
-// 响应拦截器：统一处理数据结构
+// 4. 响应拦截器：统一处理数据结构
 service.interceptors.response.use(
     response => {
         const res = response.data;
-        // 如果 code 为 0，说明成功，直接返回 data 部分
-        if (res.code === 0) {
-            return res.data;
+        if (res.code === 0 || res.code === 200) {
+            return res.data; // 业务层只关心真正的数据
         } else {
-            // 如果 code 不为 0，弹出错误信息
+            // 业务错误
             alert(res.message || '业务请求失败');
             return Promise.reject(new Error(res.message || 'Error'));
         }
     },
     error => {
-        alert('网络请求失败：' + error.message);
+        // HTTP 状态码异常
+        if (error.response && error.response.status === 401) {
+            // token 失效，跳回登录页
+            localStorage.removeItem('access_token');
+            location.href = '/login';
+        } else {
+            alert('网络请求失败：' + error.message);
+        }
         return Promise.reject(error);
     }
 );

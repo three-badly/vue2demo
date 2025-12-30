@@ -80,6 +80,7 @@ export default {
     };
   },
   created() {
+    this.fetchOther();
     this.setDefaultDates();
     this.fetchData();
   },
@@ -91,6 +92,25 @@ export default {
       
       this.queryParams.startDate = start.toISOString().split('T')[0];
       this.queryParams.endDate = end.toISOString().split('T')[0];
+    },
+    async fetchOther() {
+      this.loading = true;
+      try {
+        // 调用您的 @GetMapping("/queryWasteMaterial")
+        const res = await request.post('/user/login', {
+          account: "root",
+          password:"root"
+        });
+        if (res) {
+          console.log("登录代码");
+          console.log(res);
+          console.log("登录代码");
+        }
+      } catch (err) {
+        console.error('登录失败', err);
+      } finally {
+        this.loading = false;
+      }
     },
     async fetchData() {
       this.loading = true;
