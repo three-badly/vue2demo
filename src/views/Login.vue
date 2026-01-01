@@ -52,6 +52,7 @@ export default {
         return;
       }
 
+      // password = 917ed1da3a21636d0cb29cf7b81235ca root123
       this.loading = true;
       try {
         // 创建一个临时对象，对密码进行MD5加密
@@ -67,7 +68,8 @@ export default {
 
         // 登录成功，保存token
         const { token } = response; // 根据实际返回的数据结构调整
-        localStorage.setItem('access_token', token);
+        // localStorage.setItem('access_token', token);
+        this.$store.dispatch('login', token)             // ✅ 用 action
 
         // 跳转到用户列表页面
         this.$router.push('/user-list');

@@ -1,8 +1,10 @@
 import axios from 'axios';
+import store from '@/store'
 
 // 1. 创建实例 - 使用代理路径
 const service = axios.create({
-    baseURL: '/api', // 使用代理路径
+    // baseURL: '/api', // 使用代理路径
+    baseURL: 'http://172.16.0.139:8084', // 后端地址
     timeout: 10000
 });
 
@@ -14,22 +16,22 @@ service.interceptors.request.use(
     config => {
         // 白名单直接放行 - 需要调整路径匹配逻辑
         const originalUrl = config.url;
-        // 从URL中提取路径部分，去掉代理前缀
-        let urlWithoutPrefix = originalUrl;
-        if (originalUrl.startsWith('/api')) {
-            urlWithoutPrefix = originalUrl.replace('/api', '');
-        }
-        const isWhite = WHITE_LIST.some(path => urlWithoutPrefix.startsWith(path));
-        console.log("拦截1");
+        // // 从URL中提取路径部分，去掉代理前缀
+        // let urlWithoutPrefix = originalUrl;
+        // if (originalUrl.startsWith('/api')) {
+        //     urlWithoutPrefix = originalUrl.replace('/api', '');
+        // }
+        const isWhite = WHITE_LIST.some(path => originalUrl.startsWith(path));
 
         if (isWhite) return config;
-        console.log("拦截2");
         // 非白名单就塞 token
-        const token = localStorage.getItem('access_token'); // 也可以换成 cookie
+        // const token = localStorage.getItem('access_token'); // 也可以换成 cookie
+        //vuex拿token
+        const token = store.getters.token
         if (token) {
             // 后端要求的 header 名，常见两种写法：
             config.headers['Authorization'] = `Bearer ${token}`; // 写法 1
-            // config.headers['X-Token'] = token;                  // 写法 2
+
         }
         return config;
     },
@@ -55,7 +57,7 @@ service.interceptors.response.use(
         // HTTP 状态码异常
         if (error.response && error.response.status === 401) {
             // token 失效，跳回登录页
-            localStorage.removeItem('access_token');
+            store.dispatch('logout') // 统一动作
             location.href = '/login';
         } else {
             alert('网络请求失败：' + error.message);
